@@ -42,7 +42,10 @@ export async function createRemoteEndpoint(data: CoupleData): Promise<string> {
 /** Reads the endpoint. Returns null if it's empty (shouldn't happen). */
 export async function fetchRemote(endpoint: string): Promise<SyncPayload | null> {
   const res = await fetch(endpoint, { headers: { Accept: "application/json" } });
-  if (res.status === 404) throw new Error("Endpoint not found — it may have been deleted.");
+  if (res.status === 404)
+    throw new Error("Endpoint not found (404) — it was likely deleted. Tap Disconnect, then create a new one.");
+  if (res.status === 403)
+    throw new Error("The sync service blocked the request (403) — usually temporary. Wait a couple of minutes and retry.");
   if (!res.ok) throw new Error("Endpoint error (code " + res.status + ").");
   const obj = (await res.json()) as Record<string, unknown>;
   if (obj && obj.data && typeof obj.at === "string") {
@@ -62,5 +65,11 @@ export async function pushRemote(endpoint: string, data: CoupleData): Promise<vo
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error("Push failed (code " + res.status + ").");
+  if (!res.ok) {
+    if (res.status === 413)
+      throw new Error(
+        "Data too large to sync (413) — photos and voice notes have grown past the limit. Remove some media, or raise MAX_PAYLOAD in worker.js."
+      );
+    throw new Error("Push failed (code " + res.status + ").");
+  }
 }

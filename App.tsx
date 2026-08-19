@@ -192,7 +192,11 @@ function Shell() {
       {importReq && (
         <ImportModal
           title="Your partner shared an update"
-          message="This link contains their latest version of your shared content — dates, notes, photos and voice notes. Apply it? (The newest version wins.)"
+          message={
+            importReq.at < data.updatedAt
+              ? "Warning: this link is OLDER than the data already on this device. Applying it would roll back your newer changes. Since your endpoint is set up, you almost certainly want to Cancel."
+              : "This link contains their latest version of your shared content — dates, notes, photos and voice notes. Apply it?"
+          }
           onConfirm={applyImport}
           onCancel={() => setImportReq(null)}
         />
