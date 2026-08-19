@@ -5,6 +5,46 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23f43f5e' d='M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z'/%3E%3C/svg%3E" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#fdf3ee" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Ours" />
+<script>
+  // iOS home-screen icon, generated in-code (no image file needed):
+  // rose→amber gradient with a white heart.
+  (function () {
+    try {
+      var s = 180, c = document.createElement("canvas");
+      c.width = c.height = s;
+      var x = c.getContext("2d");
+      var g = x.createLinearGradient(0, 0, s, s);
+      g.addColorStop(0, "#fb7185");
+      g.addColorStop(1, "#fbbf24");
+      x.fillStyle = g;
+      x.fillRect(0, 0, s, s);
+      x.fillStyle = "rgba(255,255,255,0.14)";
+      x.beginPath(); x.arc(142, 32, 66, 0, 7); x.fill();
+      x.fillStyle = "#ffffff";
+      x.save();
+      x.translate(s / 2, s / 2 + 8);
+      var k = 56;
+      x.beginPath();
+      x.moveTo(0, k * 0.9);
+      x.bezierCurveTo(-k * 1.6, k * 0.05, -k * 1.15, -k * 0.95, 0, -k * 0.35);
+      x.bezierCurveTo(k * 1.15, -k * 0.95, k * 1.6, k * 0.05, 0, k * 0.9);
+      x.closePath();
+      x.shadowColor = "rgba(190,18,60,0.28)";
+      x.shadowBlur = 14;
+      x.shadowOffsetY = 5;
+      x.fill();
+      x.restore();
+      var link = document.createElement("link");
+      link.rel = "apple-touch-icon";
+      link.href = c.toDataURL("image/png");
+      document.head.appendChild(link);
+    } catch (e) { /* non-critical */ }
+  })();
+</script>
     <meta name="description" content="Ours — a little private app for us. Countdowns, daily love notes, mood notes, memories and voice notes." />
     <title>Ours — A Little App for Us</title>
   </head>
