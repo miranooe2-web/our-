@@ -1,14 +1,13 @@
 {
-  // Wrangler config — deploys this project to the Cloudflare Worker
-  // named "our-app" (keep this identical to your existing Worker name,
-  // otherwise a brand-new Worker with a different URL gets created).
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "our-app",
   "main": "worker.js",
   "compatibility_date": "2026-08-19",
   "assets": {
-    // The folder `npm run build` creates — the whole app is one index.html.
     "directory": "./dist",
     "binding": "ASSETS"
-  }
+  },
+  "kv_namespaces": [
+    { "binding": "OURS_KV", "id": "PASTE_YOUR_KV_NAMESPACE_ID_HERE" }
+  ]
 }
