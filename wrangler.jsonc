@@ -1,22 +1,24 @@
 {
+  // Wrangler config — deploys this project to the Cloudflare Worker
+  // named "our-app" (keep this identical to your existing Worker name,
+  // otherwise a brand-new Worker with a different URL gets created).
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "our-app",
   "main": "worker.js",
   "compatibility_date": "2026-08-19",
   "assets": {
+    // The folder `npm run build` creates — the whole app is one index.html.
     "directory": "./dist",
     "binding": "ASSETS"
   },
   "kv_namespaces": [
-    // ⚠️️ ONE-SWAP RULE ⚠️⚠️
-    // Replace PUT_ID_HERE with your Namespace ID.
-    // Get it here: Cloudflare dashboard → Storage & Databases →
-    // Key-Value → click "OURS_KV" → "Namespace ID" (the LONG string
-    // with the copy button — NOT the name "OURS_KV").
-    // Keep the quotation marks. Do not push until you've done this.
-    {
-      "binding": "OURS_KV",
-      "id": "a7bf1004f87b4e448edd1eb81dd68db6"
-    }
+    // ── IMPORTANT ─────────────────────────────────────────────
+    // 1. Cloudflare dashboard → Workers & Pages → our-app
+    //    → Settings → Bindings → "Add binding" → Key Value (KV)
+    // 2. Namespace name:  OURS_KV
+    // 3. Copy the namespace ID shown (a long string of digits/letters)
+    // 4. Paste it below, replacing PASTE_YOUR_KV_NAMESPACE_ID_HERE
+    // ─────────────────────────────────────────────────────────
+    { "binding": "OURS_KV", "id": "PASTE_YOUR_KV_NAMESPACE_ID_HERE" }
   ]
 }

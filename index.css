@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+/* ---------- Base ---------- */
+html, body, #root {
+  height: 100%;
+}
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  background: #f7ece6;
+}
+
+/* Romantic serif (SF Pro + System Serif mix) */
+.font-romantic {
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, "Times New Roman", serif;
+  letter-spacing: 0.01em;
+}
+
+/* Hide scrollbars inside the app frame */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Tabular numerals for ticking counters */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* ---------- Spring-ish keyframes ---------- */
+@keyframes o-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes o-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes o-fade-down {
+  from { opacity: 0; transform: translateY(-18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes o-sheet-up {
+  from { transform: translateY(105%); }
+  to { transform: translateY(0); }
+}
+@keyframes o-pop {
+  0% { opacity: 0; transform: scale(0.9); }
+  60% { transform: scale(1.02); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes o-heartbeat {
+  0%, 100% { transform: scale(1); }
+  12% { transform: scale(1.14); }
+  24% { transform: scale(1); }
+  36% { transform: scale(1.1); }
+  48% { transform: scale(1); }
+}
+@keyframes o-ring {
+  0% { transform: scale(1); opacity: 0.55; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+@keyframes o-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-7px); }
+  40% { transform: translateX(7px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(5px); }
+}
+
+.animate-fade-in  { animation: o-fade-in 0.3s ease both; }
+.animate-fade-up  { animation: o-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-fade-down{ animation: o-fade-down 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.animate-sheet-up { animation: o-sheet-up 0.45s cubic-bezier(0.32, 1.35, 0.45, 1) both; }
+.animate-pop      { animation: o-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.animate-heartbeat{ animation: o-heartbeat 2.4s ease-in-out infinite; }
+.animate-ring     { animation: o-ring 1.4s ease-out infinite; }
+.animate-shake    { animation: o-shake 0.4s ease both; }
+
+/* Date / time inputs inherit the app font */
+input[type="date"], input[type="time"] {
+  color-scheme: light;
+}
