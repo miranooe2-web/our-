@@ -740,6 +740,15 @@ function SyncSection() {
               >
                 Push now
               </button>
+              <a
+                href={data.remoteEndpoint ?? "#"}
+                target="_blank"
+                rel="noreferrer"
+                title="Open the raw endpoint to see what the device is actually receiving"
+                className="rounded-xl bg-white px-3 py-2 text-[11.5px] font-semibold text-rose-600 ring-1 ring-rose-100 transition active:scale-95"
+              >
+                Open
+              </a>
             </div>
             <textarea
               readOnly
