@@ -11,7 +11,35 @@ function fmtTime(s: number): string {
   return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 }
 
-/** A single playable voice-note row (reused in the Admin tab). */
+/** Decodes the base64 part of a data-URL to raw bytes. */
+function base64ToArrayBuffer(dataUrl: string): ArrayBuffer {
+  const b64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes.buffer;
+}
+
+interface WAPlayer {
+  ctx: AudioContext;
+  buffer: AudioBuffer;
+  src: AudioBufferSourceNode | null;
+  /** seconds into the buffer at the moment playback (re)started */
+  offset: number;
+  /** ctx.currentTime at the moment playback (re)started */
+  startedAt: number;
+  raf: number;
+}
+
+/**
+ * A single playable voice-note row (reused in the Admin tab).
+ *
+ * Playback strategy: try a normal <audio> element first; if it can't
+ * handle the clip (classic iOS Safari issue where recorded data-URL MP4s
+ * report Infinity duration and refuse to play), fall back to WebAudio —
+ * the whole clip is decoded with decodeAudioData and played
+ * sample-accurately, which works on every browser.
+ */
 export function NoteRow({
   note,
   onDelete,
@@ -23,36 +51,140 @@ export function NoteRow({
   const [t, setT] = useState(0);
   const [dur, setDur] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const waRef = useRef<WAPlayer | null>(null);
+  const manualStop = useRef(false);
 
   useEffect(() => {
     const a = new Audio(note.audio);
     audioRef.current = a;
     const onTime = () => {
       setT(a.currentTime);
-      setDur(a.duration || 0);
+      if (isFinite(a.duration) && a.duration > 0) setDur(a.duration);
     };
-    const onEnd = () => setPlaying(false);
+    const onEnd = () => {
+      setPlaying(false);
+      setT(0);
+    };
     a.addEventListener("timeupdate", onTime);
-    a.addEventListener("durationchange", onTime);
+    a.addEventListener("loadedmetadata", onTime);
     a.addEventListener("ended", onEnd);
     return () => {
       a.pause();
       a.removeEventListener("timeupdate", onTime);
-      a.removeEventListener("durationchange", onTime);
+      a.removeEventListener("loadedmetadata", onTime);
       a.removeEventListener("ended", onEnd);
       a.src = "";
       audioRef.current = null;
+      const w = waRef.current;
+      if (w) {
+        cancelAnimationFrame(w.raf);
+        manualStop.current = true;
+        if (w.src) {
+          w.src.onended = null;
+          try {
+            w.src.stop();
+          } catch {
+            /* already stopped */
+          }
+        }
+        w.ctx.close().catch(() => {});
+        waRef.current = null;
+      }
     };
   }, [note.audio]);
 
-  const toggle = () => {
-    const a = audioRef.current;
-    if (!a) return;
-    if (a.paused) {
-      a.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
-    } else {
-      a.pause();
+  const tick = () => {
+    const w = waRef.current;
+    if (!w || !w.src) return;
+    const pos = w.offset + (w.ctx.currentTime - w.startedAt);
+    if (pos >= w.buffer.duration) {
+      setT(w.buffer.duration);
       setPlaying(false);
+      w.offset = 0;
+      w.src = null;
+      return;
+    }
+    setT(pos);
+    w.raf = requestAnimationFrame(tick);
+  };
+
+  const startWebAudio = () => {
+    const w = waRef.current;
+    if (!w || w.src) return;
+    const src = w.ctx.createBufferSource();
+    src.buffer = w.buffer;
+    src.connect(w.ctx.destination);
+    manualStop.current = false;
+    src.onended = () => {
+      if (manualStop.current) return;
+      const cur = waRef.current;
+      if (cur) {
+        cur.src = null;
+        cur.offset = 0;
+      }
+      setPlaying(false);
+      setT(0);
+    };
+    src.start(0, w.offset);
+    w.src = src;
+    w.startedAt = w.ctx.currentTime;
+    w.raf = requestAnimationFrame(tick);
+  };
+
+  const stopWebAudio = (reset: boolean) => {
+    const w = waRef.current;
+    if (w && w.src) {
+      cancelAnimationFrame(w.raf);
+      manualStop.current = true;
+      w.src.onended = null;
+      try {
+        w.src.stop();
+      } catch {
+        /* already stopped */
+      }
+      w.src = null;
+      if (reset) w.offset = 0;
+    }
+  };
+
+  const toggle = async () => {
+    if (playing) {
+      audioRef.current?.pause();
+      stopWebAudio(false);
+      setPlaying(false);
+      return;
+    }
+    // 1) The normal audio element, when it's actually usable
+    const a = audioRef.current;
+    if (a && isFinite(a.duration) && a.duration > 0) {
+      try {
+        await a.play();
+        setPlaying(true);
+        return;
+      } catch {
+        a.pause();
+        /* stalled (common on iOS) → WebAudio fallback below */
+      }
+    }
+    // 2) WebAudio fallback: decode the whole clip, play sample-accurately
+    try {
+      if (!waRef.current) {
+        const Ctor =
+          window.AudioContext ??
+          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (!Ctor) return;
+        const ctx = new Ctor();
+        const buf = await ctx.decodeAudioData(base64ToArrayBuffer(note.audio));
+        if (audioRef.current === null) return; // unmounted while decoding
+        setDur(buf.duration);
+        waRef.current = { ctx, buffer: buf, src: null, offset: 0, startedAt: 0, raf: 0 };
+      }
+      const w = waRef.current;
+      if (w.ctx.state === "suspended") await w.ctx.resume();
+      startWebAudio();
+      setPlaying(true);
+    } catch {
+      /* decode failed — nothing playable here */
     }
   };
 
