@@ -150,8 +150,10 @@ export const DEFAULT_DATA: CoupleData = {
 
   adminPin: "1234",
 
-  // Set automatically by "Create our shared endpoint" in Admin → Sync & data.
-  remoteEndpoint: null,
+   // The couple's permanent sync endpoint. Any device that opens the app
+  // with this default automatically pulls the real shared data within
+  // ~15 seconds — new devices need no links and no setup.
+  remoteEndpoint: "https://our.miranooe2.workers.dev/sync",
 
   updatedAt: "2023-03-04T00:00:00.000Z",
 };
