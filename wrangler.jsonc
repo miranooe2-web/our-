@@ -19,6 +19,6 @@
     // 3. Copy the namespace ID shown (a long string of digits/letters)
     // 4. Paste it below, replacing PASTE_YOUR_KV_NAMESPACE_ID_HERE
     // ─────────────────────────────────────────────────────────
-    { "binding": "OURS_KV", "id": "PASTE_YOUR_KV_NAMESPACE_ID_HERE" }
+    { "binding": "OURS_KV", "id": "a7bf1004f87b4e448edd1eb81dd68db6" }
   ]
 }
