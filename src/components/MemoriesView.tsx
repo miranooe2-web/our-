@@ -165,13 +165,28 @@ export function MemoriesView() {
             </div>
 
             {showLetter && (
-              <div className="absolute inset-0 z-30 grid place-items-end bg-black/45 p-3 backdrop-blur-[2px] animate-fade-in" onClick={() => setShowLetter(false)}>
+              <div
+                className="absolute inset-0 z-30 flex items-start justify-center overflow-y-auto bg-black/45 p-3 pt-4 backdrop-blur-[2px] animate-fade-in"
+                onClick={() => setShowLetter(false)}
+              >
                 <div
-                  className="max-h-[78dvh] w-full max-w-[720px] overflow-y-auto rounded-[1.75rem] bg-white p-5 text-rose-950 shadow-2xl shadow-black/40"
+                  className="w-full max-w-[720px] rounded-[1.75rem] bg-white p-5 text-rose-950 shadow-2xl shadow-black/40"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="mb-3 flex items-start justify-between gap-3">
-                    <h3 className="font-romantic text-[26px] leading-tight text-rose-950">{active.title}</h3>
+                    <div className="min-w-0">
+                      <h3 className="font-romantic text-[26px] leading-tight text-rose-950">{active.title}</h3>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <span className="flex items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1 text-[11px] font-semibold text-rose-600 ring-1 ring-rose-100">
+                          <IconCalendar className="h-3.5 w-3.5" />
+                          {active.dateLabel}
+                        </span>
+                        <span className="flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700 ring-1 ring-amber-100">
+                          <IconHeart filled className="h-3 w-3" />
+                          {active.location}
+                        </span>
+                      </div>
+                    </div>
                     <button
                       type="button"
                       onClick={() => setShowLetter(false)}
