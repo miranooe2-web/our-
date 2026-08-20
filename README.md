@@ -1,7 +1,7 @@
 # Ours — a little private app for us 💗
 
 A single-file React app (Vite + Tailwind) served by a Cloudflare Worker
-named **our-app**, with live sync between devices backed by the **OURS_KV**
+named **our**, with live sync between devices backed by the **OURS_KV**
 KV namespace (`/sync` endpoint in `worker.js`).
 
 ## Local development
@@ -30,8 +30,8 @@ What `npm run deploy` does:
 3. `wrangler deploy` → uploads the Worker + static assets
 
 First deploy only: run `npx wrangler login` once so Wrangler can reach your
-Cloudflare account. If the Worker named `our-app` doesn't exist yet, the
-first deploy creates it.
+Cloudflare account. If the Worker named `our` doesn't exist yet, the
+first deploy creates it. Production URL: https://our.miranooe2.workers.dev
 
 ### Deploying from Cloudflare's Git integration (Workers Builds)
 

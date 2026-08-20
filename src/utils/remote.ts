@@ -65,5 +65,11 @@ export async function pushRemote(endpoint: string, data: CoupleData): Promise<vo
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error("Push failed (code " + res.status + ").");
+  if (!res.ok) {
+    if (res.status === 413)
+      throw new Error(
+        "Data too large to sync (413) — photos and voice notes have grown past the limit. Remove some media, or raise MAX_PAYLOAD in worker.js."
+      );
+    throw new Error("Push failed (code " + res.status + ").");
+  }
 }
