@@ -212,13 +212,6 @@ export function NoteRow({
             style={{ width: `${progress * 100}%` }}
           />
         </div>
-        <p className="mt-1 text-[10px] text-rose-300">
-          {new Date(note.createdAt).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          })}
-        </p>
       </div>
       {onDelete && (
         <button
