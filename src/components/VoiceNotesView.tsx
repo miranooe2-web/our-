@@ -68,25 +68,37 @@ export function NoteRow({
   const audioSrc = useMediaSrc(note.audio);
 
   useEffect(() => {
+    setPlaying(false);
+    setT(0);
+    setDur(0);
     if (!audioSrc) return;
     const a = new Audio(audioSrc);
     audioRef.current = a;
-    const onTime = () => {
+    a.preload = "metadata";
+    const syncTime = () => {
       setT(a.currentTime);
       if (isFinite(a.duration) && a.duration > 0) setDur(a.duration);
     };
     const onEnd = () => {
       setPlaying(false);
       setT(0);
+      a.currentTime = 0;
     };
-    a.addEventListener("timeupdate", onTime);
-    a.addEventListener("loadedmetadata", onTime);
+    const onError = () => {
+      setPlaying(false);
+    };
+    a.addEventListener("timeupdate", syncTime);
+    a.addEventListener("loadedmetadata", syncTime);
+    a.addEventListener("durationchange", syncTime);
     a.addEventListener("ended", onEnd);
+    a.addEventListener("error", onError);
     return () => {
       a.pause();
-      a.removeEventListener("timeupdate", onTime);
-      a.removeEventListener("loadedmetadata", onTime);
+      a.removeEventListener("timeupdate", syncTime);
+      a.removeEventListener("loadedmetadata", syncTime);
+      a.removeEventListener("durationchange", syncTime);
       a.removeEventListener("ended", onEnd);
+      a.removeEventListener("error", onError);
       a.src = "";
       audioRef.current = null;
       const w = waRef.current;
@@ -149,6 +161,10 @@ export function NoteRow({
     const w = waRef.current;
     if (w && w.src) {
       cancelAnimationFrame(w.raf);
+      if (!reset) {
+        w.offset = Math.min(w.buffer.duration, w.offset + (w.ctx.currentTime - w.startedAt));
+        setT(w.offset);
+      }
       manualStop.current = true;
       w.src.onended = null;
       try {
@@ -157,7 +173,10 @@ export function NoteRow({
         /* already stopped */
       }
       w.src = null;
-      if (reset) w.offset = 0;
+      if (reset) {
+        w.offset = 0;
+        setT(0);
+      }
     }
   };
 
@@ -168,16 +187,21 @@ export function NoteRow({
       setPlaying(false);
       return;
     }
-    // 1) The normal audio element, when it's actually usable
+    // 1) Prefer the browser's native audio element. Do NOT wait for
+    // metadata or a finite duration before calling play(): recorded clips
+    // (especially mobile MP4/data URLs) can report NaN/Infinity until after
+    // playback starts. Gating on duration made perfectly valid notes appear
+    // dead when tapped.
     const a = audioRef.current;
-    if (a && isFinite(a.duration) && a.duration > 0) {
+    if (a) {
       try {
         await a.play();
+        if (isFinite(a.duration) && a.duration > 0) setDur(a.duration);
         setPlaying(true);
         return;
       } catch {
         a.pause();
-        /* stalled (common on iOS) → WebAudio fallback below */
+        /* native playback failed → WebAudio fallback below */
       }
     }
     // 2) WebAudio fallback: decode the whole clip, play sample-accurately
