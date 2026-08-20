@@ -14,3 +14,8 @@ dist/
 # Misc
 .DS_Store
 *.log
+
+# Local packaging (not part of the app)
+ours-drop-in/
+ours-repo-files.zip
+FILES-TO-COPY.md

@@ -37,6 +37,19 @@ function PageHeader({ title, subtitle }: { title: string; subtitle: string }) {
   );
 }
 
+function Splash() {
+  return (
+    <div className="grid min-h-dvh w-full place-items-center bg-[#fdf4ef]">
+      <div className="flex flex-col items-center gap-3">
+        <span className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-rose-500 to-amber-400 text-white shadow-lg shadow-rose-200">
+          <IconHeart filled className="h-6 w-6 animate-heartbeat" />
+        </span>
+        <p className="font-romantic text-sm text-rose-400">Loading our little corner…</p>
+      </div>
+    </div>
+  );
+}
+
 function Shell() {
   const { data, replace, remote } = useStore();
   const [tab, setTab] = useState<Tab>("home");
@@ -192,7 +205,11 @@ function Shell() {
       {importReq && (
         <ImportModal
           title="Your partner shared an update"
-          message="This link contains their latest version of your shared content — dates, notes, photos and voice notes. Apply it? (The newest version wins.)"
+          message={
+            importReq.at < data.updatedAt
+              ? "Warning: this link is OLDER than the data already on this device. Applying it would roll back your newer changes. Since your endpoint is set up, you almost certainly want to Cancel."
+              : "This link contains their latest version of your shared content — dates, notes, photos and voice notes. Apply it?"
+          }
           onConfirm={applyImport}
           onCancel={() => setImportReq(null)}
         />
@@ -201,20 +218,28 @@ function Shell() {
   );
 }
 
+function Frame() {
+  const { booted } = useStore();
+  if (!booted) return <Splash />;
+  return (
+    <div
+      className="grid min-h-dvh w-full place-items-center md:py-8"
+      style={{
+        background:
+          "radial-gradient(1100px 700px at 15% -5%, #fbe3d8 0%, #f6e2d8 45%, #f1d9d2 100%)",
+      }}
+    >
+      <div className="relative h-dvh w-full max-w-[430px] overflow-hidden md:h-[min(880px,94dvh)] md:rounded-[2.6rem] md:shadow-2xl md:shadow-rose-400/30 md:ring-1 md:ring-rose-900/10">
+        <Shell />
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <StoreProvider>
-      <div
-        className="grid min-h-dvh w-full place-items-center md:py-8"
-        style={{
-          background:
-            "radial-gradient(1100px 700px at 15% -5%, #fbe3d8 0%, #f6e2d8 45%, #f1d9d2 100%)",
-        }}
-      >
-        <div className="relative h-dvh w-full max-w-[430px] overflow-hidden md:h-[min(880px,94dvh)] md:rounded-[2.6rem] md:shadow-2xl md:shadow-rose-400/30 md:ring-1 md:ring-rose-900/10">
-          <Shell />
-        </div>
-      </div>
+      <Frame />
     </StoreProvider>
   );
 }
