@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useStore } from "../store";
 import type { Memory } from "../types";
 import { MOTIFS } from "../theme";
+import { resolveMedia } from "../utils/mediaStore";
 import { IconCalendar, IconHeart } from "./icons";
 import { BottomSheet } from "./Sheet";
 
@@ -13,6 +14,9 @@ import { BottomSheet } from "./Sheet";
 export function MemoriesView() {
   const { data } = useStore();
   const [active, setActive] = useState<Memory | null>(null);
+  // Photos are stored as "media:<hash>" references; resolve each to a URL.
+  // (Called in a loop, so it can't be the useMediaSrc hook.)
+  const src = (v: string | null) => resolveMedia(v, data.remoteEndpoint);
 
   return (
     <div className="animate-fade-up">
@@ -31,9 +35,9 @@ export function MemoriesView() {
               className="animate-fade-up group relative aspect-[4/5] overflow-hidden rounded-3xl text-left shadow-sm shadow-rose-200/60 ring-1 ring-rose-100 transition duration-300 hover:-translate-y-0.5 active:scale-[0.97]"
               style={{ animationDelay: `${i * 70}ms` }}
             >
-              {m.image ? (
+              {src(m.image) ? (
                 <img
-                  src={m.image}
+                  src={src(m.image) ?? undefined}
                   alt={m.title}
                   className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
                 />
@@ -61,9 +65,9 @@ export function MemoriesView() {
       {active && (
         <BottomSheet onClose={() => setActive(null)}>
           <div className="-mx-2 -mt-2">
-            {active.image ? (
+            {src(active.image) ? (
               <img
-                src={active.image}
+                src={src(active.image) ?? undefined}
                 alt={active.title}
                 className="aspect-[16/10] w-full rounded-2xl object-cover"
               />

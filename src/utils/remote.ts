@@ -1,8 +1,14 @@
 import type { CoupleData } from "../types";
 import type { SyncPayload } from "./media";
+import { offloadMedia } from "./mediaStore";
 
 /**
- * Live sync via jsonblob.com — a free JSON store that needs no account.
+ * Live sync.
+ *
+ * Preferred: this app's own Cloudflare Worker at `<origin>/sync`, which
+ * also serves `<origin>/media/<hash>` for photos and voice notes.
+ *
+ * Also supported: jsonblob.com — a free JSON store that needs no account.
  *
  * - POST /api/jsonBlob        → creates a blob, returns its URL in `Location`
  * - GET  /api/jsonBlob/{id}   → reads the current payload
@@ -12,6 +18,10 @@ import type { SyncPayload } from "./media";
  * so the app can create, read and write the endpoint directly from the
  * browser. The endpoint stores { v, at, data } — `at` is the revision
  * stamp; newest always wins.
+ *
+ * Media never travels inside this payload: `pushRemote` offloads every
+ * photo and recording to the media store first and sends only short
+ * `media:<hash>` references, so the JSON stays small forever.
  */
 
 const BASE = "https://jsonblob.com/api/jsonBlob";
@@ -28,7 +38,12 @@ export interface RemoteStatus {
   lastSync: string | null;
 }
 
-/** Creates the shared endpoint and returns its URL. */
+/**
+ * Creates the shared endpoint and returns its URL.
+ *
+ * Note: jsonblob has no media store, so this path still inlines photos.
+ * The app's own Worker endpoint is the recommended one.
+ */
 export async function createRemoteEndpoint(data: CoupleData): Promise<string> {
   const payload = { v: 1, at: new Date().toISOString(), data };
   const res = await fetch(BASE, {
@@ -60,9 +75,19 @@ export async function fetchRemote(endpoint: string): Promise<SyncPayload | null>
   return null;
 }
 
-/** Writes the whole data set to the endpoint. */
-export async function pushRemote(endpoint: string, data: CoupleData): Promise<void> {
-  const payload = { v: 1, at: data.updatedAt, data };
+/**
+ * Writes the whole data set to the endpoint.
+ *
+ * Photos and voice notes are uploaded to the media store first and swapped
+ * for `media:<hash>` references, so the JSON that goes over the wire is a
+ * few kilobytes of text no matter how much media exists.
+ *
+ * Returns the offloaded copy of the data — the caller should keep it, so
+ * the local device also stops carrying the heavy base64 around.
+ */
+export async function pushRemote(endpoint: string, data: CoupleData): Promise<CoupleData> {
+  const lean = await offloadMedia(data, endpoint);
+  const payload = { v: 1, at: lean.updatedAt, data: lean };
   const res = await fetch(endpoint, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -88,4 +113,5 @@ export async function pushRemote(endpoint: string, data: CoupleData): Promise<vo
     }
     throw new Error("Push failed (code " + res.status + ").");
   }
+  return lean;
 }

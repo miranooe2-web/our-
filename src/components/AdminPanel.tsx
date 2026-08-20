@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from "react";
-import { useStore } from "../store";
+import { useMediaSrc, useStore } from "../store";
 import { DEFAULT_DATA } from "../defaults";
 import type { Emotion, EmotionIconKey, Memory, TintKey } from "../types";
 import { EMOTION_ICONS, TINTS } from "../theme";
@@ -108,6 +108,8 @@ function PhotoPicker({
   const ref = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const box = size === "sm" ? "h-14 w-16" : "h-20 w-28";
+  // The stored value may be a "media:<hash>" reference — show the real URL.
+  const preview = useMediaSrc(value);
 
   async function pick(f: File | undefined) {
     if (!f) return;
@@ -124,8 +126,8 @@ function PhotoPicker({
   return (
     <div className="flex items-center gap-3">
       <div className={`${box} shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-rose-100 to-amber-100 ring-1 ring-rose-100`}>
-        {value ? (
-          <img src={value} alt="" className="h-full w-full object-cover" />
+        {preview ? (
+          <img src={preview} alt="" className="h-full w-full object-cover" />
         ) : (
           <div className="grid h-full w-full place-items-center text-rose-300">
             <IconCamera className="h-5 w-5" />

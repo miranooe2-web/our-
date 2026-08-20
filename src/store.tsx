@@ -10,6 +10,7 @@ import {
 import type { CoupleData } from "./types";
 import { DEFAULT_DATA } from "./defaults";
 import { fetchRemote, pushRemote, type RemoteStatus } from "./utils/remote";
+import { resolveMedia } from "./utils/mediaStore";
 
 /**
  * Central state store.
@@ -193,6 +194,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, [data.remoteEndpoint]);
 
+  /**
+   * A push swaps every inline photo / recording for a short media
+   * reference. Adopting that leaner copy locally keeps this device's
+   * localStorage small too — without it we'd re-upload the same base64
+   * on every change and still risk blowing the storage quota.
+   * The swap carries the same `updatedAt`, so it isn't a new revision
+   * and must not trigger another push.
+   */
+  const applyLean = useCallback((lean: CoupleData) => {
+    setData((cur) => {
+      if (cur.updatedAt !== lean.updatedAt) return cur; // superseded already
+      if (JSON.stringify(cur) === JSON.stringify(lean)) return cur; // nothing offloaded
+      skipPush.current = true;
+      return lean;
+    });
+  }, []);
+
   // ③b Debounced auto-push: any local change lands on the endpoint.
   useEffect(() => {
     if (!mounted.current) {
@@ -207,19 +225,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (!ep) return;
     if (pushTimer.current !== null) window.clearTimeout(pushTimer.current);
     pushTimer.current = window.setTimeout(() => {
-      void pushRemote(ep, dataRef.current).catch((err) => {
-        setRemote({
-          state: "error",
-          message:
-            err instanceof Error ? err.message : "Couldn't push your change — will retry.",
-          lastSync: null,
+      void pushRemote(ep, dataRef.current)
+        .then(applyLean)
+        .catch((err) => {
+          setRemote({
+            state: "error",
+            message:
+              err instanceof Error ? err.message : "Couldn't push your change — will retry.",
+            lastSync: null,
+          });
         });
-      });
     }, PUSH_DEBOUNCE_MS);
     return () => {
       if (pushTimer.current !== null) window.clearTimeout(pushTimer.current);
     };
-  }, [data]);
+  }, [data, applyLean]);
 
   const stamp = (d: CoupleData): CoupleData => ({
     ...d,
@@ -245,9 +265,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (!ep) return;
     setRemote((r) => ({ ...r, state: "working", message: null }));
     void pushRemote(ep, dataRef.current)
-      .then(() =>
-        setRemote({ state: "live", message: null, lastSync: new Date().toISOString() })
-      )
+      .then((lean) => {
+        applyLean(lean);
+        setRemote({ state: "live", message: null, lastSync: new Date().toISOString() });
+      })
       .catch((err) =>
         setRemote({
           state: "error",
@@ -255,7 +276,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           lastSync: null,
         })
       );
-  }, []);
+  }, [applyLean]);
 
   return (
     <StoreCtx.Provider value={{ data, patch, replace, reset, remote, pushNow, booted }}>
@@ -268,4 +289,16 @@ export function useStore(): StoreValue {
   const ctx = useContext(StoreCtx);
   if (!ctx) throw new Error("useStore must be used inside <StoreProvider>");
   return ctx;
+}
+
+/**
+ * Turns a stored media value into something an <img>/<audio> can use.
+ *
+ * Handles both formats transparently: a `media:<hash>` reference becomes
+ * a URL on the media store, while an old inline data-URL is returned
+ * as-is. Returns null when there's nothing to show.
+ */
+export function useMediaSrc(value: string | null | undefined): string | null {
+  const { data } = useStore();
+  return resolveMedia(value, data.remoteEndpoint);
 }
