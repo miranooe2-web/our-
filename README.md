@@ -6,7 +6,8 @@ KV namespace (`/sync` endpoint in `worker.js`).
 
 ## Local development
 
-Requires **Node.js 22+** (see `.nvmrc`).
+Requires **Node.js 20.19+** (Node 22 recommended — see `.nvmrc`). Wrangler
+is pinned to 4.86.x so installs also work on Cloudflare's Node 20 builders.
 
 ```bash
 npm install
