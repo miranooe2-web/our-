@@ -13,17 +13,23 @@ import { IconCalendar, IconHeart, IconX } from "./icons";
 export function MemoriesView() {
   const { data } = useStore();
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [showLetter, setShowLetter] = useState(false);
   const active = activeId ? data.memories.find((m) => m.id === activeId) ?? null : null;
   // Photos are stored as "media:<hash>" references; resolve each to a URL.
   // (Called in a loop, so it can't be the useMediaSrc hook.)
   const src = (v: string | null) => resolveMedia(v, data.remoteEndpoint);
+
+  const close = () => {
+    setShowLetter(false);
+    setActiveId(null);
+  };
 
   useEffect(() => {
     if (!active) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setActiveId(null);
+      if (e.key === "Escape") close();
     };
     window.addEventListener("keydown", onKey);
     return () => {
@@ -49,7 +55,10 @@ export function MemoriesView() {
             <button
               type="button"
               key={m.id}
-              onClick={() => setActiveId(m.id)}
+              onClick={() => {
+                setShowLetter(false);
+                setActiveId(m.id);
+              }}
               className="animate-fade-up group relative aspect-[4/5] overflow-hidden rounded-3xl text-left shadow-sm shadow-rose-200/60 ring-1 ring-rose-100 transition duration-300 hover:-translate-y-0.5 active:scale-[0.97]"
               style={{ animationDelay: `${i * 70}ms` }}
             >
@@ -83,33 +92,32 @@ export function MemoriesView() {
       {active &&
         createPortal(
           <div
-            className="fixed inset-0 z-[9999] flex flex-col bg-rose-950/95 text-white backdrop-blur-md animate-fade-in"
+            className="fixed inset-0 z-[9999] overflow-hidden bg-black text-white animate-fade-in"
             role="dialog"
             aria-modal="true"
             aria-label={active.title}
-            onClick={() => setActiveId(null)}
+            onClick={close}
           >
-            <button
-              type="button"
-              onClick={() => setActiveId(null)}
-              aria-label="Close memory"
-              className="absolute right-4 top-4 z-20 grid h-11 w-11 place-items-center rounded-full bg-white/15 text-white shadow-lg ring-1 ring-white/25 backdrop-blur transition hover:bg-white/25 active:scale-95"
-            >
-              <IconX className="h-5.5 w-5.5" />
-            </button>
-
-            <div className="flex min-h-0 flex-1 items-center justify-center p-3 pt-16" onClick={(e) => e.stopPropagation()}>
+            {/* The image owns the whole viewport. No bottom sheet reduces its height,
+                which fixes tall/wide photos that were still being clipped or shrunk. */}
+            <div className="absolute inset-0 grid place-items-center p-2" onClick={(e) => e.stopPropagation()}>
               {activeImageSrc ? (
                 <img
                   src={activeImageSrc}
                   alt={active.title}
-                  className="block max-h-full max-w-full rounded-xl object-contain shadow-2xl shadow-black/35"
+                  className="block object-contain"
+                  style={{
+                    width: "auto",
+                    height: "auto",
+                    maxWidth: "calc(100vw - 16px)",
+                    maxHeight: "calc(100dvh - 16px)",
+                  }}
                 />
               ) : (
                 (() => {
                   const motif = MOTIFS[active.motif] ?? MOTIFS.camera;
                   return (
-                    <div className={`relative grid aspect-[16/10] w-full max-w-[900px] place-items-center overflow-hidden rounded-2xl bg-gradient-to-br ${motif.gradient}`}>
+                    <div className={`relative grid aspect-[16/10] w-[min(900px,calc(100vw-16px))] place-items-center overflow-hidden rounded-2xl bg-gradient-to-br ${motif.gradient}`}>
                       <motif.icon className="h-16 w-16 text-white/85 drop-shadow-sm" />
                       <div className="absolute -right-6 -top-8 h-24 w-24 rounded-full bg-white/30" />
                       <div className="absolute -bottom-6 -left-8 h-20 w-20 rounded-full bg-white/20" />
@@ -119,31 +127,71 @@ export function MemoriesView() {
               )}
             </div>
 
-            <div className="max-h-[36dvh] overflow-y-auto rounded-t-[1.75rem] bg-white px-5 pb-6 pt-4 text-rose-950 shadow-2xl shadow-black/30" onClick={(e) => e.stopPropagation()}>
-              <div className="mx-auto max-w-[720px]">
-                <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <span className="flex items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1 text-[11px] font-semibold text-rose-600 ring-1 ring-rose-100">
-                    <IconCalendar className="h-3.5 w-3.5" />
-                    {active.dateLabel}
-                  </span>
-                  <span className="flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700 ring-1 ring-amber-100">
-                    <IconHeart filled className="h-3 w-3" />
-                    {active.location}
-                  </span>
-                </div>
+            <button
+              type="button"
+              onClick={close}
+              aria-label="Close memory"
+              className="absolute right-4 top-4 z-20 grid h-11 w-11 place-items-center rounded-full bg-black/45 text-white shadow-lg ring-1 ring-white/25 backdrop-blur transition hover:bg-black/60 active:scale-95"
+            >
+              <IconX className="h-5.5 w-5.5" />
+            </button>
 
-                <h3 className="font-romantic text-[26px] leading-tight text-rose-950">{active.title}</h3>
-
-                <div className="mt-3 rounded-2xl bg-gradient-to-br from-rose-50 to-amber-50/70 p-4 ring-1 ring-rose-100">
-                  <p className="whitespace-pre-line font-romantic text-[16.5px] leading-relaxed text-rose-950/90">
-                    {active.letter}
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 via-black/45 to-transparent px-4 pb-5 pt-16">
+              <div className="pointer-events-auto mx-auto flex max-w-[720px] items-end justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-romantic text-[22px] leading-tight text-white drop-shadow">
+                    {active.title}
                   </p>
-                  <p className="mt-4 text-right font-romantic text-[15px] italic text-rose-400">
-                    &mdash; with love, {data.myName}
+                  <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] font-medium text-white/80">
+                    <span className="inline-flex items-center gap-1">
+                      <IconCalendar className="h-3.5 w-3.5" /> {active.dateLabel}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <IconHeart filled className="h-3 w-3" /> {active.location}
+                    </span>
                   </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowLetter(true);
+                  }}
+                  className="shrink-0 rounded-full bg-white/95 px-4 py-2 text-[12px] font-semibold text-rose-700 shadow-lg shadow-black/20 transition active:scale-95"
+                >
+                  Read letter
+                </button>
               </div>
             </div>
+
+            {showLetter && (
+              <div className="absolute inset-0 z-30 grid place-items-end bg-black/45 p-3 backdrop-blur-[2px] animate-fade-in" onClick={() => setShowLetter(false)}>
+                <div
+                  className="max-h-[78dvh] w-full max-w-[720px] overflow-y-auto rounded-[1.75rem] bg-white p-5 text-rose-950 shadow-2xl shadow-black/40"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <h3 className="font-romantic text-[26px] leading-tight text-rose-950">{active.title}</h3>
+                    <button
+                      type="button"
+                      onClick={() => setShowLetter(false)}
+                      aria-label="Close letter"
+                      className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-rose-50 text-rose-500 ring-1 ring-rose-100"
+                    >
+                      <IconX className="h-4.5 w-4.5" />
+                    </button>
+                  </div>
+                  <div className="rounded-2xl bg-gradient-to-br from-rose-50 to-amber-50/70 p-4 ring-1 ring-rose-100">
+                    <p className="whitespace-pre-line font-romantic text-[16.5px] leading-relaxed text-rose-950/90">
+                      {active.letter}
+                    </p>
+                    <p className="mt-4 text-right font-romantic text-[15px] italic text-rose-400">
+                      &mdash; with love, {data.myName}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>,
           document.body
         )}
