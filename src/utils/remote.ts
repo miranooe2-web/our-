@@ -16,6 +16,9 @@ import type { SyncPayload } from "./media";
 
 const BASE = "https://jsonblob.com/api/jsonBlob";
 
+/** Bytes → megabytes, one decimal, for human-readable error messages. */
+const mb = (bytes: number) => (bytes / 1_000_000).toFixed(1);
+
 export type RemoteState = "off" | "working" | "live" | "error";
 
 export interface RemoteStatus {
@@ -66,10 +69,23 @@ export async function pushRemote(endpoint: string, data: CoupleData): Promise<vo
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
-    if (res.status === 413)
+    if (res.status === 413) {
+      // The Worker reports the actual size + limit so the message is concrete.
+      let detail = "";
+      try {
+        const info = (await res.json()) as { bytes?: number; limit?: number };
+        if (typeof info.bytes === "number" && typeof info.limit === "number") {
+          detail = ` (${mb(info.bytes)} MB of a ${mb(info.limit)} MB limit)`;
+        }
+      } catch {
+        /* no JSON body — keep the generic message */
+      }
       throw new Error(
-        "Data too large to sync (413) — photos and voice notes have grown past the limit. Remove some media, or raise MAX_PAYLOAD in worker.js."
+        "Data too large to sync (413)" +
+          detail +
+          " — photos and voice notes have grown past the limit. Remove some media, or raise MAX_PAYLOAD in worker.js and redeploy."
       );
+    }
     throw new Error("Push failed (code " + res.status + ").");
   }
 }

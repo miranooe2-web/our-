@@ -11,7 +11,14 @@
  * services, no bot walls, no URLs to share.
  */
 const SYNC_KEY = "sync-payload";
-const MAX_PAYLOAD = 2_000_000; // 2 MB — plenty for photos + voice notes
+/**
+ * Maximum size of one sync payload, in BYTES.
+ *
+ * Cloudflare KV allows a value of up to 25 MiB (26,214,400 bytes), so this
+ * sits just under that hard ceiling and leaves a little headroom. Raise it
+ * no further — KV itself will start rejecting the write.
+ */
+const MAX_PAYLOAD = 24_000_000; // 24 MB — hundreds of photos + voice notes
 
 const json = (body, status = 200) =>
   new Response(body, {
@@ -49,8 +56,22 @@ export default {
       }
       if (request.method === "PUT" || request.method === "POST") {
         const body = await request.text();
-        if (!body || body.length > MAX_PAYLOAD) {
-          return json('{"ok":false,"error":"payload too large"}', 413);
+        if (!body) {
+          return json('{"ok":false,"error":"empty payload"}', 400);
+        }
+        // Measure real bytes (not UTF-16 code units) — base64 photos and
+        // voice notes are ASCII, but emoji/accents in notes are multi-byte.
+        const bytes = new TextEncoder().encode(body).length;
+        if (bytes > MAX_PAYLOAD) {
+          return json(
+            JSON.stringify({
+              ok: false,
+              error: "payload too large",
+              bytes,
+              limit: MAX_PAYLOAD,
+            }),
+            413
+          );
         }
         await env.OURS_KV.put(SYNC_KEY, body);
         return json('{"ok":true}');
