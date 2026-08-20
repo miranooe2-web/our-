@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useStore } from "../store";
+import { useMediaSrc, useStore } from "../store";
 import {
   anniversaryCountdown,
   elapsedSince,
@@ -36,6 +36,7 @@ function ordinal(n: number): string {
 export function CountdownCard() {
   const { data } = useStore();
   const now = useNow(1000);
+  const heroSrc = useMediaSrc(data.heroImage);
 
   const elapsed = elapsedSince(data.startDate, now);
   const ann = anniversaryCountdown(data.startDate, data.anniversaryDate, now);
@@ -44,10 +45,10 @@ export function CountdownCard() {
   return (
     <section className="relative overflow-hidden rounded-[1.9rem] shadow-xl shadow-rose-300/50 animate-fade-up">
       {/* Background: shared hero photo or dynamic gradient */}
-      {data.heroImage ? (
+      {heroSrc ? (
         <>
           <img
-            src={data.heroImage}
+            src={heroSrc}
             alt="Us"
             className="absolute inset-0 h-full w-full object-cover"
           />

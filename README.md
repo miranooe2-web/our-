@@ -4,6 +4,33 @@ A single-file React app (Vite + Tailwind) served by a Cloudflare Worker
 named **our**, with live sync between devices backed by the **OURS_KV**
 KV namespace (`/sync` endpoint in `worker.js`).
 
+## How sync stores photos and voice notes
+
+Media is **not** carried inside the sync payload. Each photo and recording
+is uploaded once to `/media/<sha256-of-its-bytes>` and the synced JSON
+keeps only a short `media:<hash>` reference, so the payload stays a few
+kilobytes no matter how much media there is.
+
+Why it works this way — inlining media as base64 made the payload grow
+without bound, which meant `413 payload too large` from `/sync`, a blown
+localStorage quota on each device, and every photo re-sent on every
+15-second poll.
+
+Because a file's name is the hash of its content:
+
+- the same photo added twice is stored once,
+- an upload is skipped when the server already has those bytes (`HEAD`),
+- media URLs are immutable, so browsers cache them forever.
+
+Limits live at the top of `worker.js`: `MAX_MEDIA` (20 MB per file) and
+`MAX_PAYLOAD` (24 MB for the JSON — generous only so older clients that
+still inline media can finish migrating). Cloudflare KV caps a single
+value at 25 MiB; don't raise either past that.
+
+Migration is automatic and safe: existing inline photos are offloaded on
+the next push, and if an endpoint has no `/media` route the app keeps the
+media inline instead of storing a reference that resolves to nothing.
+
 ## Local development
 
 Requires **Node.js 20.19+** (Node 22 recommended — see `.nvmrc`). Wrangler

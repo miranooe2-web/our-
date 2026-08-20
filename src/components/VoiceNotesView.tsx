@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useStore } from "../store";
+import { useMediaSrc, useStore } from "../store";
 import type { VoiceNote } from "../types";
 import { uid } from "../utils/media";
 import { IconMic, IconPause, IconPlay, IconTrash } from "./icons";
@@ -11,9 +11,19 @@ function fmtTime(s: number): string {
   return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 }
 
-/** Decodes the base64 part of a data-URL to raw bytes. */
-function base64ToArrayBuffer(dataUrl: string): ArrayBuffer {
-  const b64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
+/**
+ * Raw bytes of a clip, for the WebAudio fallback.
+ *
+ * A recording is either a `media:<hash>` reference already resolved to a
+ * URL (fetch it) or a legacy inline data-URL (decode the base64 here).
+ */
+async function clipToArrayBuffer(src: string): Promise<ArrayBuffer> {
+  if (!src.startsWith("data:")) {
+    const res = await fetch(src);
+    if (!res.ok) throw new Error("Couldn't load that recording.");
+    return res.arrayBuffer();
+  }
+  const b64 = src.slice(src.indexOf(",") + 1);
   const bin = atob(b64);
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
@@ -53,9 +63,13 @@ export function NoteRow({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const waRef = useRef<WAPlayer | null>(null);
   const manualStop = useRef(false);
+  // "media:<hash>" → a URL the browser can stream and cache; a legacy
+  // inline data-URL is passed through untouched.
+  const audioSrc = useMediaSrc(note.audio);
 
   useEffect(() => {
-    const a = new Audio(note.audio);
+    if (!audioSrc) return;
+    const a = new Audio(audioSrc);
     audioRef.current = a;
     const onTime = () => {
       setT(a.currentTime);
@@ -91,7 +105,7 @@ export function NoteRow({
         waRef.current = null;
       }
     };
-  }, [note.audio]);
+  }, [audioSrc]);
 
   const tick = () => {
     const w = waRef.current;
@@ -167,6 +181,7 @@ export function NoteRow({
       }
     }
     // 2) WebAudio fallback: decode the whole clip, play sample-accurately
+    if (!audioSrc) return;
     try {
       if (!waRef.current) {
         const Ctor =
@@ -174,7 +189,7 @@ export function NoteRow({
           (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
         if (!Ctor) return;
         const ctx = new Ctor();
-        const buf = await ctx.decodeAudioData(base64ToArrayBuffer(note.audio));
+        const buf = await ctx.decodeAudioData(await clipToArrayBuffer(audioSrc));
         if (audioRef.current === null) return; // unmounted while decoding
         setDur(buf.duration);
         waRef.current = { ctx, buffer: buf, src: null, offset: 0, startedAt: 0, raf: 0 };
