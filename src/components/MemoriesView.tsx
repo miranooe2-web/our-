@@ -98,47 +98,12 @@ export function MemoriesView() {
             aria-label={active.title}
             onClick={close}
           >
-            {/* The image owns the whole viewport. No bottom sheet reduces its height,
-                which fixes tall/wide photos that were still being clipped or shrunk. */}
-            <div className="absolute inset-0 grid place-items-center p-2" onClick={(e) => e.stopPropagation()}>
-              {activeImageSrc ? (
-                <img
-                  src={activeImageSrc}
-                  alt={active.title}
-                  className="block object-contain"
-                  style={{
-                    width: "auto",
-                    height: "auto",
-                    maxWidth: "calc(100vw - 16px)",
-                    maxHeight: "calc(100dvh - 16px)",
-                  }}
-                />
-              ) : (
-                (() => {
-                  const motif = MOTIFS[active.motif] ?? MOTIFS.camera;
-                  return (
-                    <div className={`relative grid aspect-[16/10] w-[min(900px,calc(100vw-16px))] place-items-center overflow-hidden rounded-2xl bg-gradient-to-br ${motif.gradient}`}>
-                      <motif.icon className="h-16 w-16 text-white/85 drop-shadow-sm" />
-                      <div className="absolute -right-6 -top-8 h-24 w-24 rounded-full bg-white/30" />
-                      <div className="absolute -bottom-6 -left-8 h-20 w-20 rounded-full bg-white/20" />
-                    </div>
-                  );
-                })()
-              )}
-            </div>
-
-            <button
-              type="button"
-              onClick={close}
-              aria-label="Close memory"
-              className="absolute right-4 top-4 z-20 grid h-11 w-11 place-items-center rounded-full bg-black/45 text-white shadow-lg ring-1 ring-white/25 backdrop-blur transition hover:bg-black/60 active:scale-95"
-            >
-              <IconX className="h-5.5 w-5.5" />
-            </button>
-
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 via-black/45 to-transparent px-4 pb-5 pt-16">
-              <div className="pointer-events-auto mx-auto flex max-w-[720px] items-end justify-between gap-3">
-                <div className="min-w-0">
+            {/* Keep the popup anchored at the top: the image starts directly
+                under this toolbar instead of being vertically centered or
+                pushed behind a bottom panel. */}
+            <div className="absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/85 via-black/55 to-transparent px-4 pb-5 pt-4">
+              <div className="mx-auto flex max-w-[720px] items-start gap-3">
+                <div className="min-w-0 flex-1 pr-1">
                   <p className="font-romantic text-[22px] leading-tight text-white drop-shadow">
                     {active.title}
                   </p>
@@ -157,11 +122,46 @@ export function MemoriesView() {
                     e.stopPropagation();
                     setShowLetter(true);
                   }}
-                  className="shrink-0 rounded-full bg-white/95 px-4 py-2 text-[12px] font-semibold text-rose-700 shadow-lg shadow-black/20 transition active:scale-95"
+                  className="shrink-0 rounded-full bg-white/95 px-3.5 py-2 text-[12px] font-semibold text-rose-700 shadow-lg shadow-black/20 transition active:scale-95"
                 >
                   Read letter
                 </button>
+                <button
+                  type="button"
+                  onClick={close}
+                  aria-label="Close memory"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/15 text-white shadow-lg ring-1 ring-white/25 backdrop-blur transition hover:bg-white/25 active:scale-95"
+                >
+                  <IconX className="h-5 w-5" />
+                </button>
               </div>
+            </div>
+
+            <div className="absolute inset-x-0 bottom-0 top-[5.75rem] flex items-start justify-center overflow-hidden p-2" onClick={(e) => e.stopPropagation()}>
+              {activeImageSrc ? (
+                <img
+                  src={activeImageSrc}
+                  alt={active.title}
+                  className="block object-contain"
+                  style={{
+                    width: "auto",
+                    height: "auto",
+                    maxWidth: "calc(100vw - 16px)",
+                    maxHeight: "calc(100dvh - 6.25rem)",
+                  }}
+                />
+              ) : (
+                (() => {
+                  const motif = MOTIFS[active.motif] ?? MOTIFS.camera;
+                  return (
+                    <div className={`relative grid aspect-[16/10] w-[min(900px,calc(100vw-16px))] place-items-center overflow-hidden rounded-2xl bg-gradient-to-br ${motif.gradient}`}>
+                      <motif.icon className="h-16 w-16 text-white/85 drop-shadow-sm" />
+                      <div className="absolute -right-6 -top-8 h-24 w-24 rounded-full bg-white/30" />
+                      <div className="absolute -bottom-6 -left-8 h-20 w-20 rounded-full bg-white/20" />
+                    </div>
+                  );
+                })()
+              )}
             </div>
 
             {showLetter && (
