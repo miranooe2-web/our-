@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useStore } from "../store";
 import { MOTIFS } from "../theme";
 import { resolveMedia } from "../utils/mediaStore";
@@ -7,7 +8,7 @@ import { IconCalendar, IconHeart, IconX } from "./icons";
 /**
  * MemoriesView — gallery grid of milestone cards.
  * Each card: photo (or placeholder art), date badge, title + location.
- * Tapping opens a real pop-up with the full-size image and love letter.
+ * Tapping opens a true full-screen lightbox so the whole image is visible.
  */
 export function MemoriesView() {
   const { data } = useStore();
@@ -19,12 +20,19 @@ export function MemoriesView() {
 
   useEffect(() => {
     if (!active) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setActiveId(null);
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
   }, [active]);
+
+  const activeImageSrc = active ? src(active.image) : null;
 
   return (
     <div className="animate-fade-up">
@@ -72,68 +80,73 @@ export function MemoriesView() {
         })}
       </div>
 
-      {active && (
-        <div className="fixed inset-0 z-[60] grid place-items-center bg-rose-950/60 p-4 backdrop-blur-[4px] animate-fade-in" role="dialog" aria-modal="true" aria-label={active.title} onClick={() => setActiveId(null)}>
+      {active &&
+        createPortal(
           <div
-            className="animate-pop relative max-h-[92dvh] w-full max-w-[430px] overflow-y-auto no-scrollbar rounded-[2rem] bg-white p-4 shadow-2xl shadow-rose-950/30 ring-1 ring-white/60"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-[9999] flex flex-col bg-rose-950/95 text-white backdrop-blur-md animate-fade-in"
+            role="dialog"
+            aria-modal="true"
+            aria-label={active.title}
+            onClick={() => setActiveId(null)}
           >
             <button
               type="button"
               onClick={() => setActiveId(null)}
               aria-label="Close memory"
-              className="absolute right-6 top-6 z-10 grid h-10 w-10 place-items-center rounded-full bg-white/90 text-rose-500 shadow-lg shadow-rose-950/10 ring-1 ring-rose-100 backdrop-blur transition hover:bg-rose-50 active:scale-95"
+              className="absolute right-4 top-4 z-20 grid h-11 w-11 place-items-center rounded-full bg-white/15 text-white shadow-lg ring-1 ring-white/25 backdrop-blur transition hover:bg-white/25 active:scale-95"
             >
-              <IconX className="h-5 w-5" />
+              <IconX className="h-5.5 w-5.5" />
             </button>
 
-            {src(active.image) ? (
-              <img
-                src={src(active.image) ?? undefined}
-                alt={active.title}
-                className="max-h-[62dvh] w-full rounded-[1.5rem] bg-rose-50 object-contain"
-              />
-            ) : (
-              (() => {
-                const motif = MOTIFS[active.motif] ?? MOTIFS.camera;
-                return (
-                  <div className={`relative grid aspect-[16/10] w-full place-items-center overflow-hidden rounded-[1.5rem] bg-gradient-to-br ${motif.gradient}`}>
-                    <motif.icon className="h-14 w-14 text-white/85 drop-shadow-sm" />
-                    <div className="absolute -right-6 -top-8 h-24 w-24 rounded-full bg-white/30" />
-                    <div className="absolute -bottom-6 -left-8 h-20 w-20 rounded-full bg-white/20" />
-                  </div>
-                );
-              })()
-            )}
+            <div className="flex min-h-0 flex-1 items-center justify-center p-3 pt-16" onClick={(e) => e.stopPropagation()}>
+              {activeImageSrc ? (
+                <img
+                  src={activeImageSrc}
+                  alt={active.title}
+                  className="block max-h-full max-w-full rounded-xl object-contain shadow-2xl shadow-black/35"
+                />
+              ) : (
+                (() => {
+                  const motif = MOTIFS[active.motif] ?? MOTIFS.camera;
+                  return (
+                    <div className={`relative grid aspect-[16/10] w-full max-w-[900px] place-items-center overflow-hidden rounded-2xl bg-gradient-to-br ${motif.gradient}`}>
+                      <motif.icon className="h-16 w-16 text-white/85 drop-shadow-sm" />
+                      <div className="absolute -right-6 -top-8 h-24 w-24 rounded-full bg-white/30" />
+                      <div className="absolute -bottom-6 -left-8 h-20 w-20 rounded-full bg-white/20" />
+                    </div>
+                  );
+                })()
+              )}
+            </div>
 
-            <div className="px-1 pb-2 pt-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="flex items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1 text-[11px] font-semibold text-rose-600 ring-1 ring-rose-100">
-                  <IconCalendar className="h-3.5 w-3.5" />
-                  {active.dateLabel}
-                </span>
-                <span className="flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700 ring-1 ring-amber-100">
-                  <IconHeart filled className="h-3 w-3" />
-                  {active.location}
-                </span>
-              </div>
+            <div className="max-h-[36dvh] overflow-y-auto rounded-t-[1.75rem] bg-white px-5 pb-6 pt-4 text-rose-950 shadow-2xl shadow-black/30" onClick={(e) => e.stopPropagation()}>
+              <div className="mx-auto max-w-[720px]">
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <span className="flex items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1 text-[11px] font-semibold text-rose-600 ring-1 ring-rose-100">
+                    <IconCalendar className="h-3.5 w-3.5" />
+                    {active.dateLabel}
+                  </span>
+                  <span className="flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700 ring-1 ring-amber-100">
+                    <IconHeart filled className="h-3 w-3" />
+                    {active.location}
+                  </span>
+                </div>
 
-              <h3 className="mt-3 font-romantic text-[26px] leading-tight text-rose-950">
-                {active.title}
-              </h3>
+                <h3 className="font-romantic text-[26px] leading-tight text-rose-950">{active.title}</h3>
 
-              <div className="mt-4 rounded-2xl bg-gradient-to-br from-rose-50 to-amber-50/70 p-5 ring-1 ring-rose-100">
-                <p className="whitespace-pre-line font-romantic text-[16.5px] leading-relaxed text-rose-950/90">
-                  {active.letter}
-                </p>
-                <p className="mt-4 text-right font-romantic text-[15px] italic text-rose-400">
-                  &mdash; with love, {data.myName}
-                </p>
+                <div className="mt-3 rounded-2xl bg-gradient-to-br from-rose-50 to-amber-50/70 p-4 ring-1 ring-rose-100">
+                  <p className="whitespace-pre-line font-romantic text-[16.5px] leading-relaxed text-rose-950/90">
+                    {active.letter}
+                  </p>
+                  <p className="mt-4 text-right font-romantic text-[15px] italic text-rose-400">
+                    &mdash; with love, {data.myName}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
