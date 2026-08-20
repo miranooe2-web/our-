@@ -17,16 +17,21 @@ import { fetchRemote, pushRemote, type RemoteStatus } from "./utils/remote";
  * Persistence & distribution, in order of reach:
  *  1. localStorage — survives reloads on this device.
  *  2. BroadcastChannel — every open tab on this device updates live.
- *  3. Remote endpoint (jsonblob.com URL, optional) — every device that knows
- *     the URL pushes its changes there and polls it every 15 seconds, so the
- *     whole app stays in step across devices with no manual steps.
+ *  3. Remote endpoint (optional) — every device that knows the URL pushes
+ *     its changes there and polls it every 15 seconds, so the whole app
+ *     stays in step across devices with no manual steps.
  *     Revisions carry an `updatedAt` stamp; newest always wins.
+ *
+ * On first load the store does one immediate endpoint fetch so a brand-new
+ * device shows the REAL shared content within ~2 seconds instead of the
+ * sample defaults (the app shows a splash until that settles).
  */
 
 const LS_KEY = "ours-couple-data-v1";
 const CHANNEL = "ours-couple-sync";
 const POLL_MS = 15_000;
 const PUSH_DEBOUNCE_MS = 700;
+const BOOT_TIMEOUT_MS = 4_000;
 
 interface StoreValue {
   data: CoupleData;
@@ -40,6 +45,12 @@ interface StoreValue {
   remote: RemoteStatus;
   /** Immediately push the current data to the endpoint. */
   pushNow: () => void;
+  /**
+   * False until the initial endpoint fetch settles (or times out).
+   * The app shows a loading splash while this is false, so new devices
+   * see the real shared content — not the sample defaults.
+   */
+  booted: boolean;
 }
 
 const StoreCtx = createContext<StoreValue | null>(null);
@@ -65,6 +76,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     message: null,
     lastSync: null,
   });
+  const [booted, setBooted] = useState(false);
   const dataRef = useRef(data);
   dataRef.current = data;
 
@@ -74,6 +86,39 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   /** Set when an incoming revision was just applied — skip re-pushing it. */
   const skipPush = useRef(false);
   const pushTimer = useRef<number | null>(null);
+
+  // ③c Instant first fetch: a fresh device pulls the shared content
+  //     immediately so it looks "real" from the very first second.
+  useEffect(() => {
+    const ep = dataRef.current.remoteEndpoint;
+    if (!ep) {
+      setBooted(true);
+      return;
+    }
+    let settled = false;
+    const finish = () => {
+      if (!settled) {
+        settled = true;
+        setBooted(true);
+      }
+    };
+    const timer = window.setTimeout(finish, BOOT_TIMEOUT_MS);
+    void (async () => {
+      try {
+        const payload = await fetchRemote(ep);
+        if (payload && payload.at && payload.at > dataRef.current.updatedAt) {
+          skipPush.current = true;
+          setData({ ...DEFAULT_DATA, ...payload.data, updatedAt: payload.at });
+        }
+      } catch {
+        /* offline — show local data; the poller keeps retrying */
+      } finally {
+        window.clearTimeout(timer);
+        finish();
+      }
+    })();
+    return () => window.clearTimeout(timer);
+  }, []);
 
   // ② Live channel for same-device tabs.
   useEffect(() => {
@@ -213,7 +258,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <StoreCtx.Provider value={{ data, patch, replace, reset, remote, pushNow }}>
+    <StoreCtx.Provider value={{ data, patch, replace, reset, remote, pushNow, booted }}>
       {children}
     </StoreCtx.Provider>
   );
